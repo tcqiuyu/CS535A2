@@ -1,18 +1,18 @@
 package lossy;
 
 
-import java.util.Map;
+import java.io.Serializable;
 
 /**
  * Created by Qiu on 11/10/15.
  */
-public class LossyEntry{
+public class LossyEntry implements Comparable<LossyEntry>, Serializable{
 
     private String element;
     private Integer frequency;
-    private Double delta;
+    private Integer delta;
 
-    public LossyEntry(String element, Integer frequency, Double delta) {
+    public LossyEntry(String element, Integer frequency, Integer delta) {
         this.element = element;
         this.frequency = frequency;
         this.delta = delta;
@@ -34,11 +34,11 @@ public class LossyEntry{
         this.frequency = frequency;
     }
 
-    public Double getDelta() {
+    public Integer getDelta() {
         return delta;
     }
 
-    public void setDelta(Double delta) {
+    public void setDelta(Integer delta) {
         this.delta = delta;
     }
 
@@ -50,5 +50,10 @@ public class LossyEntry{
             return this.getElement().equals(((LossyEntry) obj).getElement());
         }
 
+    }
+
+    @Override
+    public int compareTo(LossyEntry o) {
+        return this.getFrequency().compareTo(o.getFrequency());
     }
 }

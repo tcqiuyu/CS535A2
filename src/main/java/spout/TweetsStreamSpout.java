@@ -11,6 +11,8 @@ import twitter4j.*;
 import twitter4j.conf.ConfigurationBuilder;
 
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -18,12 +20,14 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
 public class TweetsStreamSpout extends BaseRichSpout {
     private static final int QUEUE_LENGTH = 1000;
-    SpoutOutputCollector collector;
-    LinkedBlockingQueue<Status> queue = null;
+    private SpoutOutputCollector collector;
+    private LinkedBlockingQueue<Status> queue = null;
+    private ConcurrentHashMap<UUID, Values> pending;
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("tweet-raw"));
+        declarer.declareStream("hashtag-counter", new Fields("hashtag"));
+        declarer.declareStream("hashtag-logger", new Fields("tweet"));
     }
 
     @Override
@@ -50,6 +54,7 @@ public class TweetsStreamSpout extends BaseRichSpout {
             public void onException(Exception ex) {}
         };
         queue = new LinkedBlockingQueue<>(QUEUE_LENGTH);
+        pending = new ConcurrentHashMap<>();
         this.collector = collector;
         TwitterStream twitterStream = new TwitterStreamFactory(
                 new ConfigurationBuilder().setJSONStoreEnabled(true).build()).getInstance();
@@ -63,7 +68,36 @@ public class TweetsStreamSpout extends BaseRichSpout {
         if (null == status) {
             Utils.sleep(50);
         } else {
-            collector.emit(new Values(status));
+
+            HashtagEntity[] hashtags = status.getHashtagEntities();
+            if (hashtags.length > 0) {
+                for (HashtagEntity hashtag : hashtags) {
+                    String hashtagText = hashtag.getText().toLowerCase();
+                    UUID msgId = UUID.randomUUID();
+                    pending.put(msgId, new Values("count", new Values(hashtagText)));
+                    collector.emit("hashtag-counter", new Values(hashtagText), msgId);
+                }
+                UUID msgId = UUID.randomUUID();
+                pending.put(msgId, new Values("log", new Values(status)));
+                collector.emit("hashtag-logger", new Values(status));
+            }
+
+        }
+    }
+
+    @Override
+    public void ack(Object msgId) {
+        this.pending.remove(msgId);
+    }
+
+    @Override
+    public void fail(Object msgId) {
+        Values failedItem = pending.get(msgId);
+        String destBolt = (String) failedItem.get(0);
+        if (destBolt.equals("count")) {
+            this.collector.emit("hashtag-counter", (Values) failedItem.get(1), msgId);
+        } else if (destBolt.equals("log")) {
+            this.collector.emit("hashtag-logger", (Values) failedItem.get(1), msgId);
         }
     }
 }

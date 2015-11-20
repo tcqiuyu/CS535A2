@@ -16,15 +16,13 @@ import spout.TweetsStreamSpout;
 
 
 public class TwitterTopology {
-
     public static final int INTERVAL_SEC = 10;
     public static final int w = 50;
     public static final double s = 0.1;
-    public static final String OUTPUT_PATH = "tweetlog";
+    public static final String OUTPUT_PATH = "/s/chopin/b/grad/yqiu/Dropbox/Workspace/Jar/tweetlog";
     public static int COUNT_WORKER_NUM;
 
     public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException {
-
 //        if (args.length < 2) {
 //            System.err.println("Usage: TwitterTopology <remote/local> <lossy-counting-worker-number> <output-dir>");
 //            System.exit(1);
